@@ -3,8 +3,16 @@
 # rsyncReadynas2pi.sh
 # script rsyncs files from readynas to either cinnamon or caraway (RPi's)
 # usage: rsyncReadynas2pi.sh <src_path> <dst_path> <|dry>
-# sgr 11jan16
+# awaynothere@hotmail.com 11jan16
 # version 1.0
+
+#TODO: 
+# trap to remove lock file
+# trap to add comment to log file about unnatural exit
+
+### vars ###
+SRCPATH=DSTPATH=DRY=""
+LOCK="/root/bin/$0.lck"
 
 ### functions ###
 
@@ -24,6 +32,12 @@ function display_usage() {
 
 ### main ###
 
+# rsync still running, eg. from yesterday? - check for lock file
+if [ -f "$LOCK" ]; then
+	echo; echo "Lock file exists at $LOCK, this normally means $0 is still running (check with ps aux). "
+	echo "If the lock file was not correctly removed after the last exit remove it manually."
+fi
+
 # correct arguments supplied?
 if [ "$#" == "2" -o "$#" == "3" ]; then
 	SRCPATH="$1"; DSTPATH="$2"; DRY="$3"
@@ -34,4 +48,5 @@ else
 	display_usage
 fi
 
-# rsync still running, eg. from yesterday?
+
+ 
