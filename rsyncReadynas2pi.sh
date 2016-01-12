@@ -18,7 +18,8 @@ SRCPATH=DSTPATH=DRY=""
 LOCK="/root/bin/$0.lck"
 LOG="/root/bin/$0.log"
 RSYNC_LOG="/root/bin/$0.rsync.log"
-
+EMAIL="awaynothere11@gmail.com"
+MAILER=$(which mail)
 
 ### functions ###
 
@@ -40,8 +41,17 @@ function write2log() {
 	echo "$1" >> $LOG
 }
 
+function email_error() {
+	# $1 is email body	
+	echo "1 = $1"
+	echo "$1" | $MAILER -s "error with rsync scripts on $HOSTNAME at $(date "+%d%b %T") hrs" $EMAIL
+}
+
 
 ### main ###
+
+email_error "this is an error message"
+exit 0
 
 # rsync still running, eg. from yesterday? - check for lock file
 if [ -f "$LOCK" ]; then
@@ -60,6 +70,9 @@ else
 	echo; echo "Incorrect number of arguments!"
 	display_usage
 fi
+
+# email working?
+## test email client exists: mail=$(which mail); if [ $# == "0" ]; then continue
 
 # test that SRC, DST, LOG param are set
 [[ -w "$RSYNC_LOG" ]] || (email_error && exit 1)
