@@ -9,10 +9,16 @@
 #TODO: 
 # trap to remove lock file
 # trap to add comment to log file about unnatural exit
+# number errors and email errors
+
 
 ### vars ###
+
 SRCPATH=DSTPATH=DRY=""
 LOCK="/root/bin/$0.lck"
+LOG="/root/bin/$0.log"
+RSYNC_LOG="/root/bin/$0.rsync.log"
+
 
 ### functions ###
 
@@ -29,6 +35,11 @@ function display_usage() {
 	fi
 }
 
+function write2log() {
+	echo -n date "+%d%b %T" >> $LOG
+	echo "$1" >> $LOG
+}
+
 
 ### main ###
 
@@ -36,6 +47,8 @@ function display_usage() {
 if [ -f "$LOCK" ]; then
 	echo; echo "Lock file exists at $LOCK, this normally means $0 is still running (check with ps aux). "
 	echo "If the lock file was not correctly removed after the last exit remove it manually."
+	write2log "lock file found at $LOCK, exiting ..."
+	exit 1
 fi
 
 # correct arguments supplied?
@@ -48,5 +61,19 @@ else
 	display_usage
 fi
 
+# test that SRC, DST, LOG param are set
+[[ -w "$RSYNC_LOG" ]] || (email_error && exit 1)
 
+# write params / commands to log file
+write2log "SRCPATH=$SRCPATH / DSTPATH=$DSTPATH / RSYNC_LOG=$RSYNC_LOG / DRY=$DRY"
+write2log 'executing command: rsync -ratzv"$DRY" --exclude='lost+found' --exclude="*.Apple*" --exclude="*.DS_*" --log-file="$RSYNC_LOG" "$SRCPATH" "$DSTPATH"'
+
+# run rsync
+rsync -ratzv"$DRY" --exclude='lost+found' --exclude="*.Apple*" --exclude="*.DS_*" --log-file="$RSYNC_LOG" "$SRCPATH" "$DSTPATH"
+
+
+
+
+# remove lock file
+# set traps to remove lock file if aborted
  
