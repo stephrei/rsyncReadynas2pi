@@ -8,10 +8,8 @@
 # version 1.0
 
 #TODO: 
-# trap to remove lock file
-# trap to add comment to log file about unnatural exit
-# number errors and email errors
-
+#rsync progress 
+#grep and email for rsync errors
 
 ### vars ###
 
@@ -20,13 +18,12 @@ LOCK="/root/bin/$0.lck"
 LOG="/root/bin/$0.log"
 RSYNC_LOG="/root/bin/$0.rsync.log"
 EMAIL="awaynothere11@gmail.com"
+ERROR_NO=""
 
 
 ### functions ###
 
 function display_usage() {
-
-
 	USAGE="Usage: $0 <src_path> <dst_path> <|dry>"
 
 	if [ "$#" == "0" ]; then
@@ -43,8 +40,15 @@ function write2log() {
 }
 
 function email_error() {
-	MSG="$1"	
-	echo $MSG | $MAILER -s "error with rsync scripts on $HOSTNAME at $(date "+%d%b %T") hrs" $EMAIL
+	local MSG="$1"
+	local ERROR_NO="${2:-"Unknown Error"}"	
+	echo $MSG | $MAILER -s "Error no $ERROR_NO with rsync scripts on $HOSTNAME at $(date "+%d%b %T") hrs" $EMAIL
+}
+
+function email_progress() {
+	local PROGRESS="$1"
+	local MSG="$2"
+	echo "$MSG" | $MAILER -s "Rsyncing on $HOSTNAME: progress = $PROGRESS%" $EMAIL
 }
 
 function set_lockfile() {
@@ -54,16 +58,17 @@ function set_lockfile() {
 
 function remove_lockfile() {
 	write2log "removing lock file"
-	rm -f $LOCK
+	rm -f 2>/dev/null $LOCK
 }
 
+
 ### main ###
+trap remove_lockfile SIGHUP SIGINT SIGTERM EXIT
 
 ## preliminary checks
 # rsync still running, eg. from yesterday? - check for lock file
 if [ -f "$LOCK" ]; then
-	echo; echo "Lock file exists at $LOCK, this normally means $0 is still running (check with ps aux). "
-	echo "If the lock file was not correctly removed after the last exit remove it manually."
+	email_error "Lock file exists at $LOCK, this normally means $0 is still running (check with ps aux). If the lock file was not correctly removed after the last exit remove it manually. Check log files at $LOG for more details." "10"
 	write2log "lock file found at $LOCK, exiting ..."
 	exit 1
 fi
@@ -71,11 +76,12 @@ fi
 # correct arguments supplied?
 if [ "$#" == "2" -o "$#" == "3" ]; then
 	SRCPATH="$1"; DSTPATH="$2"; DRY="$3"
-     	echo; echo "will rsync files from $SRCPATH to $DSTPATH"
-		[[ "$DRY" ]] && echo " doing a test run only (dry)"
 else
 	echo; echo "Incorrect number of arguments!"
+	write2log 'Incorrect parameters supplied: SRCPATH="$1"; DSTPATH="$2"; DRY="$3"'
+	write2log "exiting ..."
 	display_usage
+	exit 1
 fi
 
 # email working?
@@ -86,11 +92,11 @@ if [ $# != "0" ]; then
 	exit 1
 fi
 
-# test that SRC, DST, LOG, RSYNC_LOG param are set
+# are SRC, DST set and LOG, RSYNC_LOG writeable?
 if [ "$SRC" == "" -o "$DST" == "" ]; then 
 	write2log "SRC and/or DST not set, exiting ..."
 	exit 1
-else if [[ ! -w "$LOG" || ! -w "$RSYNC_LOG" ]]; then 
+else if [[ ! -f "$LOG" || ! -f "$RSYNC_LOG" ]]; then 
 	write2log "LOG and/or RSYNC_LOG not writeable, exiting ..."
 	exit 1
 fi
@@ -102,6 +108,8 @@ set_lockfile
 
 ## run rsync
 write2log "starting rsync ..."
+email_progress "0" "starting rsync on $HOSTNAME"
 rsync -ratzv"$DRY" --exclude='lost+found' --exclude="*.Apple*" --exclude="*.DS_*" --log-file="$RSYNC_LOG" "$SRCPATH" "$DSTPATH" && write2log "... finished rsync"
+email_progress "100" "finished rsync on $HOSTNAME"
 
 remove_lockfile
