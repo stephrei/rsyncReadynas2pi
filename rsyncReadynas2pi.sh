@@ -9,7 +9,7 @@
 
 #TODO: 
 #rsync progress 
-#grep and email for rsync errors
+#grep "rsync error" and email rsync errors
 
 ### vars ###
 
@@ -19,6 +19,7 @@ LOG="/root/bin/$0.log"
 RSYNC_LOG="/root/bin/$0.rsync.log"
 EMAIL="awaynothere11@gmail.com"
 ERROR_NO=""
+MAILER=$(which mail)
 
 
 ### functions ###
@@ -41,7 +42,9 @@ function write2log() {
 
 function email_error() {
 	local MSG="$1"
+echo "MSG: $MSG"
 	local ERROR_NO="${2:-"Unknown Error"}"	
+echo "echo $MSG | $MAILER -s 'Error no $ERROR_NO with rsync scripts on $HOSTNAME at $(date "+%d%b %T") hrs' $EMAIL"
 	echo $MSG | $MAILER -s "Error no $ERROR_NO with rsync scripts on $HOSTNAME at $(date "+%d%b %T") hrs" $EMAIL
 }
 
@@ -50,6 +53,11 @@ function email_progress() {
 	local MSG="$2"
 	echo "$MSG" | $MAILER -s "Rsyncing on $HOSTNAME: progress = $PROGRESS%" $EMAIL
 }
+
+function extract_rsync_errors() {
+	grep "rsync error" $RSYNC_LOG
+}
+
 
 function set_lockfile() {
 	write2log "setting lock file"
@@ -85,7 +93,6 @@ else
 fi
 
 # email working?
-MAILER=$(which mail)
 if [ $# != "0" ]; then
 	write2log "mailer return non-zero exit status, exiting ..."
 	remove_lockfile
@@ -111,5 +118,8 @@ write2log "starting rsync ..."
 email_progress "0" "starting rsync on $HOSTNAME"
 rsync -ratzv"$DRY" --exclude='lost+found' --exclude="*.Apple*" --exclude="*.DS_*" --log-file="$RSYNC_LOG" "$SRCPATH" "$DSTPATH" && write2log "... finished rsync"
 email_progress "100" "finished rsync on $HOSTNAME"
+
+# email possible rsync errors - error no 111
+email_error "$(grep 'rsync error' $RSYNC_LOG)" 111
 
 remove_lockfile
