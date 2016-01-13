@@ -2,6 +2,7 @@
 
 # rsyncReadynas2pi.sh
 # script rsyncs files from readynas to either cinnamon or caraway (RPi's)
+# general logs are kept at $LOG, rsync logs are kept at $RSYNC_LOG
 # usage: rsyncReadynas2pi.sh <src_path> <dst_path> <|dry>
 # awaynothere@hotmail.com 11jan16
 # version 1.0
@@ -19,7 +20,7 @@ LOCK="/root/bin/$0.lck"
 LOG="/root/bin/$0.log"
 RSYNC_LOG="/root/bin/$0.rsync.log"
 EMAIL="awaynothere11@gmail.com"
-MAILER=$(which mail)
+
 
 ### functions ###
 
@@ -42,17 +43,23 @@ function write2log() {
 }
 
 function email_error() {
-	# $1 is email body	
-	echo "1 = $1"
-	echo "$1" | $MAILER -s "error with rsync scripts on $HOSTNAME at $(date "+%d%b %T") hrs" $EMAIL
+	MSG="$1"	
+	echo $MSG | $MAILER -s "error with rsync scripts on $HOSTNAME at $(date "+%d%b %T") hrs" $EMAIL
 }
 
+function set_lockfile() {
+	write2log "setting lock file"
+	touch $LOCK 
+}
+
+function remove_lockfile() {
+	write2log "removing lock file"
+	rm -f $LOCK
+}
 
 ### main ###
 
-email_error "this is an error message"
-exit 0
-
+## preliminary checks
 # rsync still running, eg. from yesterday? - check for lock file
 if [ -f "$LOCK" ]; then
 	echo; echo "Lock file exists at $LOCK, this normally means $0 is still running (check with ps aux). "
@@ -72,21 +79,29 @@ else
 fi
 
 # email working?
-## test email client exists: mail=$(which mail); if [ $# == "0" ]; then continue
+MAILER=$(which mail)
+if [ $# != "0" ]; then
+	write2log "mailer return non-zero exit status, exiting ..."
+	remove_lockfile
+	exit 1
+fi
 
-# test that SRC, DST, LOG param are set
-[[ -w "$RSYNC_LOG" ]] || (email_error && exit 1)
+# test that SRC, DST, LOG, RSYNC_LOG param are set
+if [ "$SRC" == "" -o "$DST" == "" ]; then 
+	write2log "SRC and/or DST not set, exiting ..."
+	exit 1
+else if [[ ! -w "$LOG" || ! -w "$RSYNC_LOG" ]]; then 
+	write2log "LOG and/or RSYNC_LOG not writeable, exiting ..."
+	exit 1
+fi
 
 # write params / commands to log file
 write2log "SRCPATH=$SRCPATH / DSTPATH=$DSTPATH / RSYNC_LOG=$RSYNC_LOG / DRY=$DRY"
 write2log 'executing command: rsync -ratzv"$DRY" --exclude='lost+found' --exclude="*.Apple*" --exclude="*.DS_*" --log-file="$RSYNC_LOG" "$SRCPATH" "$DSTPATH"'
+set_lockfile
 
-# run rsync
-rsync -ratzv"$DRY" --exclude='lost+found' --exclude="*.Apple*" --exclude="*.DS_*" --log-file="$RSYNC_LOG" "$SRCPATH" "$DSTPATH"
+## run rsync
+write2log "starting rsync ..."
+rsync -ratzv"$DRY" --exclude='lost+found' --exclude="*.Apple*" --exclude="*.DS_*" --log-file="$RSYNC_LOG" "$SRCPATH" "$DSTPATH" && write2log "... finished rsync"
 
-
-
-
-# remove lock file
-# set traps to remove lock file if aborted
- 
+remove_lockfile
