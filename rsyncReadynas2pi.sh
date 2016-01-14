@@ -11,8 +11,9 @@
 # no	description
 # 10	lock file exists	
 # 12	incorrect no of parameters	
-# 14	SRC and/or DST not writeable
+# 14	SRCPATH and/or DSTPATH not writeable
 # 16	LOG and/or RSYNC_LOG not writeable
+# 18	script must be run as root
 # 30	rsync errors
 
 
@@ -22,9 +23,9 @@
 ### vars ###
 
 SRCPATH=DSTPATH=DRY=""
-LOCK="/root/bin/$0.lck"
-LOG="/root/bin/$0.log"
-RSYNC_LOG="/root/bin/$0.rsync.log"
+LOCK="/home/sgr/git/rsyncReadynas2pi/$0.lck"
+LOG="/home/sgr/git/rsyncReadynas2pi/$0.log"
+RSYNC_LOG="/home/sgr/git/rsyncReadynas2pi/$0.rsync.log"
 EMAIL="awaynothere11@gmail.com"
 ERROR_NO=""
 MAILER=$(which mail)
@@ -46,9 +47,19 @@ function display_usage() {
 	fi
 }
 
+function check_root() {
+	if [ "$UID" -ne "0" ]; then
+		local ERROR_NO="18"
+		email_error "$0 must be run as root, exiting ..." $ERROR_NO
+                exit 1
+	fi	
+}
+
 function write2log() {
-	echo -n date "+%d%b %T" >> $LOG
-	echo "$1" >> $LOG
+	if [ "$UID" -eq "0" ]; then
+		echo -n $(date "+%d%b %T")" - " >> $LOG
+		echo "$1" >> $LOG
+	fi
 }
 
 function email_error() {
@@ -74,19 +85,12 @@ function remove_lockfile() {
 	rm -f 2>/dev/null $LOCK
 }
 
-function check_root() {
-	if [ "$UID" -ne "0" ]; then
-		local $ERROR_NO="18"
-		email_error "$0 must be run as root, exiting ..." $ERROR_NO
-		write2log "emailed $0 was not run as root as error no $ERROR_NO"
-                exit 1
-	fi	
-}
 
-### main ###
-trap remove_lockfile SIGHUP SIGINT SIGTERM EXIT
 
-## preliminary checks
+### preliminary checks
+# root?
+check_root
+
 # rsync still running, eg. from yesterday? - check for lock file
 if [ -f "$LOCK" ]; then
 	email_error "Lock file exists at $LOCK, this normally means $0 is still running (check with ps aux). If the lock file was not correctly removed after the last exit remove it manually. Check log files at $LOG for more details." "10"
@@ -96,7 +100,8 @@ fi
 
 # correct arguments supplied?
 if [ "$#" == "2" -o "$#" == "3" ]; then
-	SRCPATH="$1"; DSTPATH="$2"; DRY="$3"
+	SRCPATH="$1"; DSTPATH="$2"
+	[[ "$3" ]] && DRY="n" || DRY=""
 else
 	email_error "Error rsyncing on $HOSTNAME: incorrect number of parameters supplied" "12"
 	write2log 'Incorrect parameters supplied: SRCPATH="$1"; DSTPATH="$2"; DRY="$3"'
@@ -105,35 +110,53 @@ else
 fi
 
 # email working?
-if [ $# != "0" ]; then
+if [ ! "$MAILER" ]; then
 	write2log "mailer return non-zero exit status, exiting ..."
-	remove_lockfile
 	exit 1
 fi
 
-# are SRC, DST set and LOG, RSYNC_LOG writeable?
-if [ "$SRC" == "" -o "$DST" == "" ]; then 
-	email_error "Error rsyncing on $HOSTAME: SRC and/or DST not writeable" "14"
-	write2log "SRC and/or DST not set, exiting ..."
+# are SRCPATH, DSTPATH set and LOG, RSYNC_LOG set? - error 14
+if [ "$SRCPATH" == "" -o "$DSTPATH" == "" ]; then
+	email_error "Error rsyncing on $HOSTAME: SRCPATH and/or DSTPATH not set" "14"
+	write2log "SRCPATH and/or DSTPATH not set, exiting ..."
 	exit 1
-else if [[ ! -f "$LOG" || ! -f "$RSYNC_LOG" ]]; then 
+fi
+
+# are LOG, RSYNC_LOG writeable? - error 16
+if [[ ! -f "$LOG" || ! -f "$RSYNC_LOG" ]]; then 
 	email_error "Error rsyncing on $HOSTNAME: LOG and/or RSYNC_LOG not writeable" "16"
 	write2log "LOG and/or RSYNC_LOG not writeable, exiting ..."
 	exit 1
 fi
 
+
+### main
+
+trap remove_lockfile SIGHUP SIGINT SIGTERM
+
+# mark beginning of new log file entry
+echo "**************** begin *****************" >> $LOG
+
 # write params / commands to log file
 write2log "SRCPATH=$SRCPATH / DSTPATH=$DSTPATH / RSYNC_LOG=$RSYNC_LOG / DRY=$DRY"
 write2log 'executing command: rsync -ratzv"$DRY" --exclude='lost+found' --exclude="*.Apple*" --exclude="*.DS_*" --log-file="$RSYNC_LOG" "$SRCPATH" "$DSTPATH"'
+
 set_lockfile
 
-## run rsync
+# run rsync
 write2log "starting rsync ..."
 email_progress "0" "starting rsync on $HOSTNAME"
-rsync -ratzv"$DRY" --exclude='lost+found' --exclude="*.Apple*" --exclude="*.DS_*" --log-file="$RSYNC_LOG" "$SRCPATH" "$DSTPATH" && write2log "... finished rsync"
+rsync -ratzv"$DRY" --exclude="lost+found" --exclude="*.Apple*" --exclude="*.DS_*" --log-file="$RSYNC_LOG" "$SRCPATH" "$DSTPATH" && write2log "... finished rsync"
 email_progress "100" "finished rsync on $HOSTNAME"
 
 # email possible rsync errors - error no 30
-email_error "$(grep 'rsync error' $RSYNC_LOG)" "30"
+if [ $(grep 'rsync error' $RSYNC_LOG | wc -l) -gt "0" ]; then 
+	email_error "$(grep 'rsync error' $RSYNC_LOG)" "30"
+fi
 
 remove_lockfile
+
+# mark end of log file entry
+echo "***************** end ******************" >> $LOG
+echo "" >> $LOG
+
