@@ -3,7 +3,7 @@
 # rsyncReadynas2pi.sh
 # script rsyncs files from readynas to either cinnamon or caraway (RPi's)
 # general logs are kept at $LOG, rsync logs are kept at $RSYNC_LOG
-# usage: rsyncReadynas2pi.sh <src_path> <dst_path> <|dry>
+# USAGE: rsyncReadynas2pi.sh <src_path> <dst_path> <|dry>
 # awaynothere@hotmail.com 11jan16
 # version 1.0
 #
@@ -33,12 +33,15 @@ MAILER=$(which mail)
 ### functions ###
 
 function display_usage() {
+# function not in use, script is intended to be used with cron job
 	USAGE="Usage: $0 <src_path> <dst_path> <|dry>"
 
 	if [ "$#" == "0" ]; then
+		echo
     		echo "$USAGE"
 		echo "for example: $0 /mnt/readynas/pics cinnamon:/mnt/md1_data_2TB/"
 		echo "for example: $0 /mnt/readynas/movies caraway:/mnt/md0_data_1TB/ dry for testing only (dry)"
+		echo
     		exit 1
 	fi
 }
@@ -51,7 +54,8 @@ function write2log() {
 function email_error() {
 	local MSG="$1"
 	local ERROR_NO="${2:-"Unknown Error"}"	
-	echo $MSG | $MAILER -s "Error no $ERROR_NO with rsync scripts on $HOSTNAME at $(date "+%d%b %T") hrs" $EMAIL
+	echo $MSG | $MAILER -s "Error $ERROR_NO with rsync scripts on $HOSTNAME at $(date "+%d%b %T") hrs" $EMAIL
+	write2log "emailed $MSG as error $ERROR_NO"
 }
 
 function email_progress() {
@@ -70,6 +74,14 @@ function remove_lockfile() {
 	rm -f 2>/dev/null $LOCK
 }
 
+function check_root() {
+	if [ "$UID" -ne "0" ]; then
+		local $ERROR_NO="18"
+		email_error "$0 must be run as root, exiting ..." $ERROR_NO
+		write2log "emailed $0 was not run as root as error no $ERROR_NO"
+                exit 1
+	fi	
+}
 
 ### main ###
 trap remove_lockfile SIGHUP SIGINT SIGTERM EXIT
@@ -89,7 +101,6 @@ else
 	email_error "Error rsyncing on $HOSTNAME: incorrect number of parameters supplied" "12"
 	write2log 'Incorrect parameters supplied: SRCPATH="$1"; DSTPATH="$2"; DRY="$3"'
 	write2log "exiting ..."
-	display_usage
 	exit 1
 fi
 
