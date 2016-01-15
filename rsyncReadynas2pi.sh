@@ -142,15 +142,20 @@ trap remove_lockfile SIGHUP SIGINT SIGTERM
 echo "**************** begin *****************" >> $LOG
 
 # write params / commands to log file
-write2log "SRCPATH=$SRCPATH / DSTPATH=$DSTPATH / RSYNC_LOG=$RSYNC_LOG / DRY=$DRY"
-write2log 'executing command: rsync -ratzv"$DRY" --exclude='lost+found' --exclude="*.Apple*" --exclude="*.DS_*" --log-file="$RSYNC_LOG" "$SRCPATH" "$DSTPATH"'
+write2log "SRCPATH=$SRCPATH"
+write2log "DSTPATH=$DSTPATH"
+write2log "RSYNC_LOG=$RSYNC_LOG"
+write2log "DRY=$DRY"
+write2log "executing command: rsync -ratz$DRY --exclude='lost+found' --exclude='*.Apple*' --exclude='*.DS_*' --log-file=$RSYNC_LOG $SRCPATH $DSTPATH"
 
 set_lockfile
 
 # run rsync
+write2log "clearing $RSYNC_LOG ..."
+echo "" > "$RSYNC_LOG"
 write2log "starting rsync ..."
 email_progress "0" "starting rsync on $HOSTNAME"
-rsync -ratzv"$DRY" --exclude="lost+found" --exclude="*.Apple*" --exclude="*.DS_*" --log-file="$RSYNC_LOG" "$SRCPATH" "$DSTPATH" && write2log "... finished rsync"
+rsync -ratz"$DRY" --exclude="lost+found" --exclude="*.Apple*" --exclude="*.DS_*" --log-file="$RSYNC_LOG" "$SRCPATH" "$DSTPATH" && write2log "... finished rsync"
 email_progress "100" "finished rsync on $HOSTNAME"
 
 # email possible rsync errors - error no 30
