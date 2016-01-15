@@ -23,9 +23,10 @@
 ### vars ###
 
 SRCPATH=DSTPATH=DRY=""
-LOCK="/home/sgr/git/rsyncReadynas2pi/$0.lck"
-LOG="/home/sgr/git/rsyncReadynas2pi/$0.log"
-RSYNC_LOG="/home/sgr/git/rsyncReadynas2pi/$0.rsync.log"
+PATH="/root/bin"
+LOCK="$PATH/rsyncReadynas2pi/$0.lck"
+LOG="$PATH/rsyncReadynas2pi/$0.log"
+RSYNC_LOG="$PATH/rsyncReadynas2pi/$0.rsync.log"
 EMAIL="awaynothere11@gmail.com"
 ERROR_NO=""
 MAILER=$(which mail)
