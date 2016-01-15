@@ -89,9 +89,9 @@ function remove_lockfile() {
 
 ### preliminary checks
 # root?
-check_root
+check_root	# error 18
 
-# rsync still running, eg. from yesterday? - check for lock file
+# rsync still running, eg. from yesterday? - check for lock file - error 10
 if [ -f "$LOCK" ]; then
 	email_error "Lock file exists at $LOCK, this normally means $0 is still running (check with ps aux). If the lock file was not correctly removed after the last exit remove it manually. Check log files at $LOG for more details." "10"
 	write2log "lock file found at $LOCK, exiting ..."
@@ -115,12 +115,16 @@ if [ ! "$MAILER" ]; then
 	exit 1
 fi
 
-# are SRCPATH, DSTPATH set and LOG, RSYNC_LOG set? - error 14
+# are SRCPATH, DSTPATH set? - error 14
 if [ "$SRCPATH" == "" -o "$DSTPATH" == "" ]; then
 	email_error "Error rsyncing on $HOSTAME: SRCPATH and/or DSTPATH not set" "14"
 	write2log "SRCPATH and/or DSTPATH not set, exiting ..."
 	exit 1
 fi
+
+# do LOG, RSYNC_LOG exist?
+[[ ! -f "$LOG" ]] && (touch "$LOG" && write2log "LOG did not exist - touched it") 
+[[ ! -f "$RSYNC_LOG" ]] && (touch "$RSYNC_LOG" && write2log "RSYNC_LOG did not exist - touched it")
 
 # are LOG, RSYNC_LOG writeable? - error 16
 if [[ ! -f "$LOG" || ! -f "$RSYNC_LOG" ]]; then 
