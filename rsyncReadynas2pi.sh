@@ -28,7 +28,7 @@ source rsyncReadynas2pi_funcs.sh
 SRCPATH=""
 DSTPATH=""
 DRY=""
-LOCK="$0.lck"
+LOCK="$0.$$.lck"
 LOG="$0.log"
 RSYNC_LOG="$0.rsync.log"
 EMAIL="awaynothere11@gmail.com"
