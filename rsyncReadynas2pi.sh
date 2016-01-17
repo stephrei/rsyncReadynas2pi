@@ -20,6 +20,7 @@
 #TODO: 
 #rsync progress indicator with --info=progress2 
 
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/bin/rsyncReadynas2pi
 source rsyncReadynas2pi_funcs.sh
 
 ### vars ###
