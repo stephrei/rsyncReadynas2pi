@@ -50,7 +50,7 @@ write2log "DSTPATH = $DSTPATH"
 write2log "DRY = $DRY"
 write2log "RSYNC_LOG = $RSYNC_LOG"
 write2log "LOG = $LOG"
-write2log "executing command: rsync -ratz$DRY --exclude='lost+found' --exclude='*.Apple*' --exclude='*.DS_*' --log-file=$RSYNC_LOG $SRCPATH $DSTPATH"
+write2log "executing command: rsync -ratz$DRY --delete --exclude='lost+found' --exclude='*.Apple*' --exclude='*.DS_*' --log-file=$RSYNC_LOG $SRCPATH $DSTPATH"
 
 set_lockfile
 
