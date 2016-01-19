@@ -58,9 +58,9 @@ set_lockfile
 write2log "clearing $RSYNC_LOG ..."
 /bin/echo "" > "$RSYNC_LOG"
 write2log "starting rsync ..."
-email_progress "0" "starting rsync on $HOSTNAME"
+email_progress "0" "starting rsync from $SRCPATH to $DSTPATH"
 rsync -ratz"$DRY" --delete --exclude="lost+found" --exclude="*.Apple*" --exclude="*.DS_*" --log-file="$RSYNC_LOG" "$SRCPATH" "$DSTPATH" && write2log "... finished rsync"
-email_progress "100" "finished rsync on $HOSTNAME"
+email_progress "100" "finished rsync from $SRCPATH to $DSTPATH"
 
 # email possible rsync errors - error no 30
 if [ $(grep 'rsync error' $RSYNC_LOG | wc -l) -gt "0" ]; then 
