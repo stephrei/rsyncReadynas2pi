@@ -49,7 +49,7 @@ function email_progress() {
 function check_progress() {
 	cursize=1
 	lastsize=0
-
+### weiter: if nothing to rsync => no progress file => cannot find progress file => cursize not set - assign default value to cursize like ${cursize:-0} ?
 	while [ "$cursize" -ne "$lastsize" ]
 	do
         	sleep 5
