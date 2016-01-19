@@ -28,7 +28,7 @@ function check_root() {
 
 function write2log() {
         if [ "$UID" -eq "0" ]; then
-                /bin/echo -n $(/bin/date "+%d%b %T")" - " >> $LOG
+                /bin/echo -n "$$: "$(/bin/date "+%d%b %T")" - " >> $LOG
                 /bin/echo "$1" >> $LOG
         fi
 }
