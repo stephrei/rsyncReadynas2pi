@@ -46,6 +46,19 @@ function email_progress() {
         /bin/echo "$MSG" | $MAILER -s "Rsyncing on $HOSTNAME: progress = $PROGRESS%" $EMAIL
 }
 
+function check_progress() {
+	cursize=1
+	lastsize=0
+
+	while [ "$cursize" -ne "$lastsize" ]
+	do
+        	sleep 5
+        	lastsize=$cursize
+        	cursize=$(ls -la progress.txt | awk '{print $5}')
+        	cat progress.txt | mail -s "progress update from $HOSTNAME at $(date)" awaynothere11@gmail.com 2>/dev/null
+	done
+}
+
 function set_lockfile() {
         write2log "setting lock file"
         /usr/bin/touch $LOCK
