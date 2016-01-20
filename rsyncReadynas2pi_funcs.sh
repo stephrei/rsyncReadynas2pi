@@ -4,6 +4,8 @@
 # collection of functions used by script rsyncReadynas2pi
 # awaynothere11@gmail.com
 
+PATH=$PATH":/root/bin/rsyncReadynas2pi"
+
 function display_usage() {
 # function not in use, script is intended to be used with cron job
         USAGE="Usage: $0 <src_path> <dst_path> <|dry>"
@@ -49,13 +51,13 @@ function email_progress() {
 function check_progress() {
 	cursize=1
 	lastsize=0
-### weiter: if nothing to rsync => no progress file => cannot find progress file => cursize not set - assign default value to cursize like ${cursize:-0} ?
-	while [ "$cursize" -ne "$lastsize" ]
+	lastline=""
+	while [[ "$cursize" -ne "$lastsize" ]] && [[ -f progress.$$.txt ]]
 	do
-        	sleep 5
+        	sleep 300
         	lastsize=$cursize
-        	cursize=$(ls -la progress.txt | awk '{print $5}')
-        	cat progress.txt | mail -s "progress update from $HOSTNAME at $(date)" awaynothere11@gmail.com 2>/dev/null
+        	cursize=$(ls -la progress.$$.txt | awk '{print $5}')
+        	cat progress.$$.txt | mail -s "progress update from $HOSTNAME at $(date)" awaynothere11@gmail.com 2>/dev/null
 	done
 }
 
@@ -65,8 +67,13 @@ function set_lockfile() {
 }
 
 function remove_lockfile() {
-        write2log "removing lock file"
+        write2log "removing lock file $0.$$.lck"
         rm -f 2>/dev/null $LOCK
+}
+
+function remove_progressfile() {
+	write2log "removing progress file progress.$$.txt"
+	rm -f 2>/dev/null progress.$$.txt
 }
 
 function debug() {
@@ -115,6 +122,7 @@ function trap_received() {
                 email_error "$(grep 'rsync error' $RSYNC_LOG)" "30"
         fi
         remove_lockfile
+	remove_progressfile
 	mark_log_end
         exit 30
 }

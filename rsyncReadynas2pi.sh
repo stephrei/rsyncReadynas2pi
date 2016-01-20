@@ -18,7 +18,6 @@
 
 
 #TODO: 
-#rsync progress indicator with --info=progress2 
 
 PATH=$PATH":/root/bin/rsyncReadynas2pi"
 source rsyncReadynas2pi_funcs.sh
@@ -50,7 +49,7 @@ write2log "DSTPATH = $DSTPATH"
 write2log "DRY = $DRY"
 write2log "RSYNC_LOG = $RSYNC_LOG"
 write2log "LOG = $LOG"
-write2log "executing command: rsync -ratz$DRY --delete --exclude='lost+found' --exclude='*.Apple*' --exclude='*.DS_*' --log-file=$RSYNC_LOG $SRCPATH $DSTPATH"
+write2log "executing command: rsync -ratz$DRY --delete --exclude='lost+found' --exclude='*.Apple*' --exclude='*.DS_*' --log-file=$RSYNC_LOG $SRCPATH $DSTPATH > progress.$$.txt"
 
 set_lockfile
 
@@ -60,9 +59,10 @@ write2log "clearing $RSYNC_LOG ..."
 write2log "starting rsync ..."
 
 email_progress "0" "starting rsync from $SRCPATH to $DSTPATH"
-rsync -ratz"$DRY" --delete --exclude="lost+found" --exclude="*.Apple*" --exclude="*.DS_*" --log-file="$RSYNC_LOG" "$SRCPATH" "$DSTPATH" && write2log "... finished rsync" &
+rsync -ratz"$DRY" --delete --info=progress2 --exclude="lost+found" --exclude="*.Apple*" --exclude="*.DS_*" --log-file="$RSYNC_LOG" "$SRCPATH" "$DSTPATH" > progress.$$.txt &
 check_progress &
 wait
+write2log "... finished rsync"
 email_progress "100" "finished rsync from $SRCPATH to $DSTPATH"
 
 # email possible rsync errors - error no 30
