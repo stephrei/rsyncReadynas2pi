@@ -57,7 +57,7 @@ function check_progress() {
         	sleep 300
         	lastsize=$cursize
         	cursize=$(ls -la progress.$$.txt | awk '{print $5}')
-        	cat progress.$$.txt | mail -s "progress update from $HOSTNAME at $(date)" awaynothere11@gmail.com 2>/dev/null
+        	cat progress.$$.txt | mail -s "progress on $HOSTNAME at $(date): $SRCPATH to $DSTPATH" awaynothere11@gmail.com 2>/dev/null
 	done
 }
 
